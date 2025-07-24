@@ -1,2 +1,5 @@
 .devbox
 .vscode
+log.txt
+logs
+.env
