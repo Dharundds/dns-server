@@ -78,7 +78,7 @@ func StartFrontend() error {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		// Construct the file path based on the request URL
 		path := filepath.Join(constants.BuildPath, r.URL.Path)
-
+		path = filepath.Clean(path)
 		// Check if the requested file exists
 		_, err := os.Stat(path)
 		if os.IsNotExist(err) || r.URL.Path == "/" {
