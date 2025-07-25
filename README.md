@@ -8,8 +8,6 @@ A custom DNS server with a modern web interface for managing DNS records. Built 
 - 🌐 Custom DNS resolution with Redis storage
 - 🔄 Automatic forwarding to upstream DNS (1.1.1.1) for unknown domains
 - ⚡ High-performance UDP server with timeout handling
-- 🔧 Graceful shutdown with signal handling
-- 📝 Structured logging with Zerolog
 
 ### Web Management Interface
 - 📊 View all DNS records in a modern, responsive interface
@@ -31,7 +29,7 @@ A custom DNS server with a modern web interface for managing DNS records. Built 
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   Frontend      │    │   Go Backend    │    │     Redis       │
 │   (React)       │◄──►│   DNS Server    │◄──►│   (Storage)     │
-│   Port: 5173    │    │   Ports: 53,8080│    │   Port: 6379    │
+│   Port: 3000    │    │   Ports: 8080   │    │   Port: 6379    │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
@@ -46,13 +44,10 @@ A custom DNS server with a modern web interface for managing DNS records. Built 
 
 ### 1. Start Redis Server
 ```bash
-# Install and start Redis (Ubuntu/Debian)
-sudo apt update
-sudo apt install redis-server
-sudo systemctl start redis-server
-
-# Or using Docker
+# using Docker (Recomemded)
 docker run -d -p 6379:6379 redis:alpine
+
+# But you can use your own redis setup but should be available only to localhost of the server
 ```
 
 ### 2. Backend Setup
@@ -61,7 +56,7 @@ docker run -d -p 6379:6379 redis:alpine
 go mod tidy
 
 # Run the DNS server (requires sudo for port 53)
-sudo go run main.go
+sudo go run cmd/dns/main.go
 ```
 
 The server will start:
@@ -85,7 +80,7 @@ The web interface will be available at `http://localhost:5173`
 ## Usage
 
 ### Adding DNS Records via Web UI
-1. Open `http://localhost:5173` in your browser
+1. Open `http://localhost:3000` in your browser
 2. Click "Add DNS Record"
 3. Enter domain name (e.g., `example.local`)
 4. Enter IP address (e.g., `192.168.1.100`)
@@ -171,26 +166,32 @@ redis-server
 sudo go run main.go
 
 # Terminal 3: Start React frontend
+# note by default on starting backend at 3000 you can view the page
+# if suppose if you want changes kindly consider to comment server.StartFrontend in main.go
+# Before this step otherwise this step is not needed
 cd frontend && bun run dev
 ```
 
 ## Production Deployment
 
+### Frontend
+```bash
+cd frontend
+bun vite build
+cd -r ./dist ../
+# Serve the dist/ directory with nginx or similar
+```
+
 ### Backend
 ```bash
 # Build the binary
-go build -o dns-server main.go
+go build -o dns cmd/dns/main.go
 
 # Run with systemd or process manager
 sudo ./dns-server
 ```
 
-### Frontend
-```bash
-cd frontend
-bun run build
-# Serve the dist/ directory with nginx or similar
-```
+
 
 ## Security Considerations
 
