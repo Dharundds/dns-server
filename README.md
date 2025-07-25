@@ -75,7 +75,7 @@ bun install
 bun run dev
 ```
 
-The web interface will be available at `http://localhost:5173`
+The web interface will be available at `http://localhost:3000`
 
 ## Usage
 
