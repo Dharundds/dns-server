@@ -89,8 +89,8 @@ func StartFrontend() error {
 			http.FileServer(http.Dir(constants.BuildPath)).ServeHTTP(w, r)
 		}
 	})
-	log.Info().Msgf("Frontend server starting on 3000")
-	return http.ListenAndServe(":3000", nil)
+	log.Info().Msgf("Frontend server starting on 3002")
+	return http.ListenAndServe(":3002", nil)
 
 }
 

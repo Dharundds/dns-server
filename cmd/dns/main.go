@@ -30,6 +30,9 @@ func serverInit() {
 	if err != nil {
 		log.Error().Msgf("Error while initialising Redis -> %v", err)
 	}
+
+	constants.ContextManager = manager.NewContextManager()
+	handlers.LoadRedisContext()
 }
 
 func serverClose() {
@@ -95,7 +98,7 @@ func main() {
 	// if gin.Mode() == gin.ReleaseMode {
 	go func() {
 		if err := server.StartFrontend(); err != nil && err != http.ErrServerClosed {
-			log.Panic().Msgf("Failed to start server at addr 3000 -> error %v", err)
+			log.Panic().Msgf("Failed to start server at addr 3002 -> error %v", err)
 		}
 	}()
 	// }

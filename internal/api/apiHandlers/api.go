@@ -1,12 +1,11 @@
 package apiHandler
 
 import (
-	"context"
 	"dns-server/internal/constants"
+	"dns-server/internal/handlers"
 	"net"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
@@ -60,8 +59,6 @@ func CORSMiddleware() gin.HandlerFunc {
 
 // GET /api/records - List all DNS records
 func GetRecords(c *gin.Context) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
 
 	if constants.Redis == nil {
 		c.JSON(http.StatusInternalServerError, APIResponse{
@@ -70,25 +67,10 @@ func GetRecords(c *gin.Context) {
 		})
 		return
 	}
-
+	// key := fmt.Sprintf("dns-%s:*",)
 	// Get all keys (domain names)
-	keys, err := constants.Redis.ScanKeys(ctx, "*")
-	if err != nil {
-		log.Error().Msgf("Error scanning Redis keys: %v", err)
-		c.JSON(http.StatusInternalServerError, APIResponse{
-			Success: false,
-			Message: "Failed to retrieve DNS records",
-		})
-		return
-	}
-
 	var records []DNSRecord
-	for _, domain := range keys {
-		ip, err := constants.Redis.Get(ctx, domain)
-		if err != nil {
-			log.Warn().Msgf("Error getting IP for domain %s: %v", domain, err)
-			continue
-		}
+	for domain, ip := range constants.ContextManager.GetContext() {
 		records = append(records, DNSRecord{
 			Domain: domain,
 			IP:     ip,
@@ -129,9 +111,6 @@ func CreateRecord(c *gin.Context) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
 	if constants.Redis == nil {
 		c.JSON(http.StatusInternalServerError, APIResponse{
 			Success: false,
@@ -141,14 +120,8 @@ func CreateRecord(c *gin.Context) {
 	}
 
 	// Set TTL if provided, otherwise no expiration
-	var ttl time.Duration
-	if record.TTL > 0 {
-		ttl = time.Duration(record.TTL) * time.Second
-	}
-
-	err := constants.Redis.Set(ctx, record.Domain, record.IP, ttl)
-	if err != nil {
-		log.Error().Msgf("Error setting DNS record: %v", err)
+	ok := handlers.AddContext(record.Domain, record.IP)
+	if !ok {
 		c.JSON(http.StatusInternalServerError, APIResponse{
 			Success: false,
 			Message: "Failed to create DNS record",
@@ -175,10 +148,6 @@ func DeleteRecord(c *gin.Context) {
 		})
 		return
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
 	if constants.Redis == nil {
 		c.JSON(http.StatusInternalServerError, APIResponse{
 			Success: false,
@@ -187,29 +156,8 @@ func DeleteRecord(c *gin.Context) {
 		return
 	}
 
-	// Check if record exists
-	exists, err := constants.Redis.Exists(ctx, domain)
-	if err != nil {
-		log.Error().Msgf("Error checking if record exists: %v", err)
-		c.JSON(http.StatusInternalServerError, APIResponse{
-			Success: false,
-			Message: "Failed to check record existence",
-		})
-		return
-	}
-
-	if exists == 0 {
-		c.JSON(http.StatusNotFound, APIResponse{
-			Success: false,
-			Message: "DNS record not found",
-		})
-		return
-	}
-
-	// Delete the record
-	err = constants.Redis.Del(ctx, domain)
-	if err != nil {
-		log.Error().Msgf("Error deleting DNS record: %v", err)
+	ok := handlers.RemoveContext(domain)
+	if !ok {
 		c.JSON(http.StatusInternalServerError, APIResponse{
 			Success: false,
 			Message: "Failed to delete DNS record",

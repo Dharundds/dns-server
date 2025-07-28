@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import './App.css'
 
 // Dynamically get the base URL from the current browser location
-const API_BASE = `${window.location.protocol}//${window.location.hostname}:8080/api`
+const API_BASE = `http://api.dns.home:8080/api`
 
 function App() {
   const [records, setRecords] = useState([])

@@ -164,6 +164,23 @@ func (r *Redis) Del(ctx context.Context, keys ...string) error {
 func (r *Redis) Exists(ctx context.Context, keys ...string) (int64, error) {
 	return r.client.Exists(ctx, keys...).Result()
 }
+func (r *Redis) HGetAll(ctx context.Context, key string) (map[string]string, error) {
+	result, err := r.client.HGetAll(ctx, key).Result()
+	return result, err
+}
+
+func (r *Redis) HGet(ctx context.Context, key string, field string) (string, error) {
+	result, err := r.client.HGet(ctx, key, field).Result()
+	return result, err
+}
+
+func (r *Redis) HSet(ctx context.Context, key string, field string, value any) error {
+	return r.client.HSet(ctx, key, field, value).Err()
+}
+
+func (r *Redis) HDel(ctx context.Context, key string, fields ...string) error {
+	return r.client.HDel(ctx, key, fields...).Err()
+}
 
 // Expire sets a timeout on a key
 func (r *Redis) Expire(ctx context.Context, key string, expiration time.Duration) error {

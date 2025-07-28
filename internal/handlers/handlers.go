@@ -8,22 +8,25 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
 )
 
-func getIpForDN(ctx context.Context, domainName string) string {
+func getIpForDN(domainName string) string {
 	if constants.Redis == nil {
 		log.Error().Msg("There is Redis connection available")
 		return ""
 	}
 
-	val, err := constants.Redis.Get(ctx, domainName)
+	val, ok := constants.ContextManager.GetContext()[domainName]
 
-	if err != nil && err == redis.Nil && strings.Contains(domainName, ".home") {
-		log.Error().Msgf("Error while fetching value for key -> %s err -> %v", domainName, err)
-		return "error"
-
+	if !ok {
+		log.Error().Msgf("No IP found for domain -> %s in context reloading context", domainName)
+		LoadRedisContext()
+		val, ok = constants.ContextManager.GetContext()[domainName]
+		if !ok {
+			log.Error().Msgf("No IP found for domain -> %s in context reloading context", domainName)
+			return "error"
+		}
 	}
 
 	return val
@@ -144,7 +147,7 @@ func HandleDNSQuery(ctx context.Context, wg *sync.WaitGroup, pc net.PacketConn, 
 	log.Info().Msgf("Domain name received from %s: %s", addr.String(), domain)
 
 	// TODO: use dynamic domain
-	ipstr := getIpForDN(ctx, domain)
+	ipstr := getIpForDN(domain)
 	switch ipstr {
 	case "":
 		forwardTo := "1.1.1.1:53"
@@ -262,4 +265,43 @@ func parseName(q []byte) string {
 	result := strings.Join(parts, ".")
 	log.Debug().Msgf("Parsed DNS name: %s", result)
 	return result
+}
+
+func AddContext(domainName string, port string) bool {
+
+	err := constants.Redis.HSet(context.Background(), "dns", domainName, port)
+	if err != nil {
+		return false
+	}
+
+	constants.ContextManager.AddRP(domainName, port)
+
+	return true
+}
+
+func RemoveContext(domainName string) bool {
+	err := constants.Redis.HDel(context.Background(), "dns", domainName)
+	if err != nil {
+		return false
+	}
+
+	constants.ContextManager.RemoveRP(domainName)
+
+	return true
+}
+
+func LoadRedisContext() map[string]string {
+	if constants.Redis == nil {
+		return nil
+	}
+
+	res, err := constants.Redis.HGetAll(context.Background(), "dns")
+	if err != nil {
+		log.Error().Msgf("Error while loading Redis context -> %v", err)
+		return nil
+	}
+
+	constants.ContextManager.LoadContext(res)
+
+	return constants.ContextManager.GetContext()
 }
